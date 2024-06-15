@@ -148,38 +148,35 @@ void getFingerprintEnroll(int id) {
 # Esp32 with ENC28j60 lan module based. but want to achieve same thing
 #include <SPI.h>
 #include <EthernetENC.h>
-#include <HTTPClient.h>
 
 // Network settings
-byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED }; // MAC address for your Ethernet shield
-IPAddress ip(192.168.1.150); // IP address for your ESP32
-IPAddress myDns(192.168.1.1); // DNS server
-IPAddress gateway(192.168.1.1); // Gateway
-IPAddress subnet(255.255.255.0); // Subnet mask
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED }; // Change this to your network's MAC address
+IPAddress ip(192, 168, 1, 177); // Change this to a suitable static IP for your network
+IPAddress server(192, 168, 1, 9); // Server IP
+const int port = 8000;
 
 // Replace with your server URL
 const char* serverUrl = "http://192.168.1.9:8000/biometricattendance/getdata/";
 
+EthernetClient client;
+
 void setup() {
   Serial.begin(115200);
 
-  // Start Ethernet
-  Ethernet.begin(mac, ip, myDns, gateway, subnet);
+  // Initialize Ethernet
+  Ethernet.begin(mac, ip);
+  delay(1000);
 
-  // Check for Ethernet hardware present
   if (Ethernet.hardwareStatus() == EthernetNoHardware) {
-    Serial.println("Ethernet shield was not found.");
+    Serial.println("Ethernet shield was not found. Sorry, can't run without hardware.");
     while (true) {
-      delay(1); // Do nothing, no point in proceeding
+      delay(1); // Do nothing, no point running without Ethernet hardware
     }
   }
   if (Ethernet.linkStatus() == LinkOFF) {
     Serial.println("Ethernet cable is not connected.");
-    while (true) {
-      delay(1); // Do nothing, no point in proceeding
-    }
   }
-  
+
   Serial.println("Connected to Ethernet");
 }
 
@@ -191,97 +188,112 @@ void loop() {
 }
 
 void ChecktoAddID() {
-  EthernetClient client;
-  HTTPClient http;
+  if (client.connect(server, port)) {
+    Serial.println("Connected to server");
 
-  String postData = "Get_Fingerid=get_id"; // Add the Fingerprint ID to the Post array in order to send it
+    String url = String(serverUrl) + "check_add_id/";
+    String postData = "Get_Fingerid=get_id";
+    
+    // Send HTTP POST request
+    client.println("POST " + url + " HTTP/1.1");
+    client.println("Host: " + String(server));
+    client.println("Content-Type: application/x-www-form-urlencoded");
+    client.print("Content-Length: ");
+    client.println(postData.length());
+    client.println();
+    client.println(postData);
 
-  String url = String(serverUrl) + "check_add_id/"; // Construct the full URL
-  Serial.println("Requesting URL: " + url); // Debug print
+    // Wait for response
+    while (client.connected()) {
+      if (client.available()) {
+        String line = client.readStringUntil('\n');
+        Serial.println(line); // Print the response
 
-  http.begin(client, url); // Initiate HTTP request
-  http.addHeader("Content-Type", "application/x-www-form-urlencoded"); // Specify content-type header
-  
-  int httpCode = http.POST(postData); // Send the request
-  String payload = http.getString(); // Get the response payload
-
-  if (httpCode > 0) { // Check for the returning code
-    Serial.printf("HTTP Response code: %d\n", httpCode);
-    Serial.println("Payload: " + payload);
-
-    if (payload.startsWith("{\"response\": \"add-id")) {
-      String add_id = payload.substring(payload.indexOf("add-id") + 6);
-      Serial.println("Add ID: " + add_id);
-      int id = add_id.toInt();
-      getFingerprintEnroll(id);
+        // Check for response and handle the ID
+        if (line.startsWith("{\"response\": \"add-id")) {
+          String add_id = line.substring(line.indexOf("add-id") + 6);
+          Serial.println("Add ID: " + add_id);
+          int id = add_id.toInt();
+          getFingerprintEnroll(id);
+        }
+      }
     }
+    client.stop();
   } else {
-    Serial.printf("Error in HTTP request: %s\n", http.errorToString(httpCode).c_str());
+    Serial.println("Connection to server failed");
   }
-  
-  http.end(); // Close connection
 }
 
 void ChecktoDeleteID() {
-  EthernetClient client;
-  HTTPClient http;
+  if (client.connect(server, port)) {
+    Serial.println("Connected to server");
 
-  String postData = "DeleteID=check"; // Add the action to the Post array in order to send it
+    String url = String(serverUrl) + "check_delete_id/";
+    String postData = "DeleteID=check";
+    
+    // Send HTTP POST request
+    client.println("POST " + url + " HTTP/1.1");
+    client.println("Host: " + String(server));
+    client.println("Content-Type: application/x-www-form-urlencoded");
+    client.print("Content-Length: ");
+    client.println(postData.length());
+    client.println();
+    client.println(postData);
 
-  String url = String(serverUrl) + "check_delete_id/"; // Construct the full URL
-  Serial.println("Requesting URL: " + url); // Debug print
+    // Wait for response
+    while (client.connected()) {
+      if (client.available()) {
+        String line = client.readStringUntil('\n');
+        Serial.println(line); // Print the response
 
-  http.begin(client, url); // Initiate HTTP request
-  http.addHeader("Content-Type", "application/x-www-form-urlencoded"); // Specify content-type header
-  
-  int httpCode = http.POST(postData); // Send the request
-  String payload = http.getString(); // Get the response payload
-
-  if (httpCode > 0) { // Check for the returning code
-    Serial.printf("HTTP Response code: %d\n", httpCode);
-    Serial.println("Payload: " + payload);
-
-    if (payload.startsWith("{\"response\": \"del-id")) {
-      String id = payload.substring(payload.indexOf("del-id") + 6);
-      Serial.println("Delete ID: " + id);
-      deleteFingerprint(id.toInt());
+        // Check for response and handle the ID
+        if (line.startsWith("{\"response\": \"del-id")) {
+          String id = line.substring(line.indexOf("del-id") + 6);
+          Serial.println("Delete ID: " + id);
+          deleteFingerprint(id.toInt());
+        }
+      }
     }
+    client.stop();
   } else {
-    Serial.printf("Error in HTTP request: %s\n", http.errorToString(httpCode).c_str());
+    Serial.println("Connection to server failed");
   }
-  
-  http.end(); // Close connection
 }
 
 void ChecktoUpdateID() {
-  EthernetClient client;
-  HTTPClient http;
+  if (client.connect(server, port)) {
+    Serial.println("Connected to server");
 
-  String postData = "UpdateID=check"; // Add the action to the Post array in order to send it
+    String url = String(serverUrl) + "check_update_id/";
+    String postData = "UpdateID=check";
+    
+    // Send HTTP POST request
+    client.println("POST " + url + " HTTP/1.1");
+    client.println("Host: " + String(server));
+    client.println("Content-Type: application/x-www-form-urlencoded");
+    client.print("Content-Length: ");
+    client.println(postData.length());
+    client.println();
+    client.println(postData);
 
-  String url = String(serverUrl) + "check_update_id/"; // Construct the full URL
-  Serial.println("Requesting URL: " + url); // Debug print
+    // Wait for response
+    while (client.connected()) {
+      if (client.available()) {
+        String line = client.readStringUntil('\n');
+        Serial.println(line); // Print the response
 
-  http.begin(client, url); // Initiate HTTP request
-  http.addHeader("Content-Type", "application/x-www-form-urlencoded"); // Specify content-type header
-  
-  int httpCode = http.POST(postData); // Send the request
-  String payload = http.getString(); // Get the response payload
-
-  if (httpCode > 0) { // Check for the returning code
-    Serial.printf("HTTP Response code: %d\n", httpCode);
-    Serial.println("Payload: " + payload);
-
-    if (payload.startsWith("{\"response\": \"update-id")) {
-      String id = payload.substring(payload.indexOf("update-id") + 10);
-      Serial.println("Update ID: " + id);
-      updateFingerprint(id.toInt());
+        // Check for response and handle the ID
+        if (line.startsWith("{\"response\": \"update-id")) {
+          String id = line.substring(line.indexOf("update-id") + 10);
+          Serial.println("Update ID: " + id);
+          updateFingerprint(id.toInt());
+        }
+      }
     }
+    client.stop();
   } else {
-    Serial.printf("Error in HTTP request: %s\n", http.errorToString(httpCode).c_str());
+    Serial.println("Connection to server failed");
   }
-  
-  http.end(); // Close connection
 }
 
 void deleteFingerprint(int id) {
@@ -303,6 +315,7 @@ void getFingerprintEnroll(int id) {
   // Dummy implementation, replace with your actual code
   Serial.printf("Enrolling Fingerprint ID %d.\n", id);
 }
+
 
 
 #ESP32 code micropython code
