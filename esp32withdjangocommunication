@@ -145,11 +145,167 @@ void getFingerprintEnroll(int id) {
   Serial.printf("Enrolling Fingerprint ID %d.\n", id);
 }
 
+# Esp32 with ENC28j60 lan module based. but want to achieve same thing
+#include <SPI.h>
+#include <EthernetENC.h>
+#include <HTTPClient.h>
+
+// Network settings
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED }; // MAC address for your Ethernet shield
+IPAddress ip(192.168.1.150); // IP address for your ESP32
+IPAddress myDns(192.168.1.1); // DNS server
+IPAddress gateway(192.168.1.1); // Gateway
+IPAddress subnet(255.255.255.0); // Subnet mask
+
+// Replace with your server URL
+const char* serverUrl = "http://192.168.1.9:8000/biometricattendance/getdata/";
+
+void setup() {
+  Serial.begin(115200);
+
+  // Start Ethernet
+  Ethernet.begin(mac, ip, myDns, gateway, subnet);
+
+  // Check for Ethernet hardware present
+  if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+    Serial.println("Ethernet shield was not found.");
+    while (true) {
+      delay(1); // Do nothing, no point in proceeding
+    }
+  }
+  if (Ethernet.linkStatus() == LinkOFF) {
+    Serial.println("Ethernet cable is not connected.");
+    while (true) {
+      delay(1); // Do nothing, no point in proceeding
+    }
+  }
+  
+  Serial.println("Connected to Ethernet");
+}
+
+void loop() {
+  ChecktoAddID();
+  ChecktoDeleteID();
+  ChecktoUpdateID();
+  delay(10000); // Check actions every 10 seconds
+}
+
+void ChecktoAddID() {
+  EthernetClient client;
+  HTTPClient http;
+
+  String postData = "Get_Fingerid=get_id"; // Add the Fingerprint ID to the Post array in order to send it
+
+  String url = String(serverUrl) + "check_add_id/"; // Construct the full URL
+  Serial.println("Requesting URL: " + url); // Debug print
+
+  http.begin(client, url); // Initiate HTTP request
+  http.addHeader("Content-Type", "application/x-www-form-urlencoded"); // Specify content-type header
+  
+  int httpCode = http.POST(postData); // Send the request
+  String payload = http.getString(); // Get the response payload
+
+  if (httpCode > 0) { // Check for the returning code
+    Serial.printf("HTTP Response code: %d\n", httpCode);
+    Serial.println("Payload: " + payload);
+
+    if (payload.startsWith("{\"response\": \"add-id")) {
+      String add_id = payload.substring(payload.indexOf("add-id") + 6);
+      Serial.println("Add ID: " + add_id);
+      int id = add_id.toInt();
+      getFingerprintEnroll(id);
+    }
+  } else {
+    Serial.printf("Error in HTTP request: %s\n", http.errorToString(httpCode).c_str());
+  }
+  
+  http.end(); // Close connection
+}
+
+void ChecktoDeleteID() {
+  EthernetClient client;
+  HTTPClient http;
+
+  String postData = "DeleteID=check"; // Add the action to the Post array in order to send it
+
+  String url = String(serverUrl) + "check_delete_id/"; // Construct the full URL
+  Serial.println("Requesting URL: " + url); // Debug print
+
+  http.begin(client, url); // Initiate HTTP request
+  http.addHeader("Content-Type", "application/x-www-form-urlencoded"); // Specify content-type header
+  
+  int httpCode = http.POST(postData); // Send the request
+  String payload = http.getString(); // Get the response payload
+
+  if (httpCode > 0) { // Check for the returning code
+    Serial.printf("HTTP Response code: %d\n", httpCode);
+    Serial.println("Payload: " + payload);
+
+    if (payload.startsWith("{\"response\": \"del-id")) {
+      String id = payload.substring(payload.indexOf("del-id") + 6);
+      Serial.println("Delete ID: " + id);
+      deleteFingerprint(id.toInt());
+    }
+  } else {
+    Serial.printf("Error in HTTP request: %s\n", http.errorToString(httpCode).c_str());
+  }
+  
+  http.end(); // Close connection
+}
+
+void ChecktoUpdateID() {
+  EthernetClient client;
+  HTTPClient http;
+
+  String postData = "UpdateID=check"; // Add the action to the Post array in order to send it
+
+  String url = String(serverUrl) + "check_update_id/"; // Construct the full URL
+  Serial.println("Requesting URL: " + url); // Debug print
+
+  http.begin(client, url); // Initiate HTTP request
+  http.addHeader("Content-Type", "application/x-www-form-urlencoded"); // Specify content-type header
+  
+  int httpCode = http.POST(postData); // Send the request
+  String payload = http.getString(); // Get the response payload
+
+  if (httpCode > 0) { // Check for the returning code
+    Serial.printf("HTTP Response code: %d\n", httpCode);
+    Serial.println("Payload: " + payload);
+
+    if (payload.startsWith("{\"response\": \"update-id")) {
+      String id = payload.substring(payload.indexOf("update-id") + 10);
+      Serial.println("Update ID: " + id);
+      updateFingerprint(id.toInt());
+    }
+  } else {
+    Serial.printf("Error in HTTP request: %s\n", http.errorToString(httpCode).c_str());
+  }
+  
+  http.end(); // Close connection
+}
+
+void deleteFingerprint(int id) {
+  // Dummy implementation, replace with your actual code
+  Serial.printf("Fingerprint ID %d deleted.\n", id);
+}
+
+void addFingerprint(int id) {
+  // Dummy implementation, replace with your actual code
+  Serial.printf("Fingerprint ID %d added.\n", id);
+}
+
+void updateFingerprint(int id) {
+  // Dummy implementation, replace with your actual code
+  Serial.printf("Fingerprint ID %d updated.\n", id);
+}
+
+void getFingerprintEnroll(int id) {
+  // Dummy implementation, replace with your actual code
+  Serial.printf("Enrolling Fingerprint ID %d.\n", id);
+}
 
 
-
-
-#ESP32 code
+#ESP32 code micropython code
 import time
 import urequests as requests  # MicroPython module for HTTP requests
 
