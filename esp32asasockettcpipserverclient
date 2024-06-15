@@ -1,0 +1,42 @@
+# To set up an ESP32 to communicate over TCP/IP using MicroPython, you can create a simple server that listens for incoming connections and handles data transmission. Here's a basic example of how you can do this:
+import network
+import socket
+
+# Replace with your Wi-Fi credentials
+SSID = 'YOUR_SSID'
+PASSWORD = 'YOUR_PASSWORD'
+
+# Connect to Wi-Fi
+def connect_to_wifi():
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    wlan.connect(SSID, PASSWORD)
+    while not wlan.isconnected():
+        pass
+    print('Connected to Wi-Fi')
+    print('IP Address:', wlan.ifconfig()[0])
+
+# Setup TCP server
+def setup_server():
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind(('0.0.0.0', 8080))
+    server_socket.listen(1)
+    print('TCP server started')
+    
+    while True:
+        conn, addr = server_socket.accept()
+        print('Connected by', addr)
+
+        while True:
+            data = conn.recv(1024)
+            if not data:
+                break
+            print('Received:', data)
+            conn.sendall(data)  # Echo back the received data
+
+        conn.close()
+        print('Connection closed')
+
+# Main program
+connect_to_wifi()
+setup_server()
