@@ -1,5 +1,5 @@
 # abhi ye code kaise work kar rha hai ki response = requests.post(url, data="Get_Fingerid=get_id") is data ko lekr http post mar rha hai aur mera django kya kar rha hai ki 
-
+# so iska working kuch is tarah ka hai ki ye teeno Get_Fingerid=get_id, DeleteID=check, UpdateID=check ye body hai postman ki jo server par condition match karegi ki agar ye aaya hai to usko ye send kar do. so ye bar bar hit marti hai ki kuch hai kuch hai aur agar kuch rhta hai to server send kar deta hai nahi to null null send karte rhta hai
 #esp32 arduino code
 #include <WiFi.h>
 #include <HTTPClient.h>
@@ -31,27 +31,28 @@ void loop() {
   delay(10000); // Check actions every 10 seconds
 }
 
+// yaha mai ek chiz likh rha hu apne samjhne ke liye taki mai bad me agar is chiz ko padhu to samjh saku. actually agar mai postman ka example lekr samjhu to postman se hit marne ke liye mujhe do chize chahiye. ek to url aur dusra body me mai kya pass kar rha hu post karne ke liye
 void ChecktoAddID() {
   WiFiClient client;
   HTTPClient http;
 
-  String postData = "Get_Fingerid=get_id"; // Add the Fingerprint ID to the Post array in order to send it
+  String postData = "Get_Fingerid=get_id"; // actually agar mai postman se compare karu to hum body me {"Get_Fingerid":"get_id"} kuch is tarah se mai url par ye post data ko hit mar rha hu
 
-  String url = String(serverUrl) + "check_add_id/"; // Construct the full URL
+  String url = String(serverUrl) + "check_add_id/"; // Construct the full URL iska simple sa ye mtlb hai ki mai hit marunga is link par http://192.168.1.9:8000/biometricattendance/getdata/check_add_id/
   Serial.println("Requesting URL: " + url); // Debug print
 
   http.begin(client, url); // Initiate HTTP request
   http.addHeader("Content-Type", "application/x-www-form-urlencoded"); // Specify content-type header
   
-  int httpCode = http.POST(postData); // Send the request
-  String payload = http.getString(); // Get the response payload
+  int httpCode = http.POST(postData); // Send the request aur yaha par hum jaise post man me post button par click karte hai samjh lo ki yaha par humne wahi kaam kiya hai
+  String payload = http.getString(); // Get the response payload. aur jab hum hit marte hai to hume response milta hai hume kuch wo hi response hume bhi yaha mil rha hai jo humne payload string me store kara liya hai
 
-  if (httpCode > 0) { // Check for the returning code
+  if (httpCode > 0) { // Check for the returning code. iska matlab ki agar kuch to aaya hai response ke taur par to
     Serial.printf("HTTP Response code: %d\n", httpCode);
     Serial.println("Payload: " + payload);
 
-    if (payload.startsWith("{\"response\": \"add-id")) {
-      String add_id = payload.substring(payload.indexOf("add-id") + 6);
+    if (payload.startsWith("{\"response\": \"add-id")) {       // "response":"add-id123" to kuch is tarah se response aata hai udhar side se
+      String add_id = payload.substring(payload.indexOf("add-id") + 6); 
       Serial.println("Add ID: " + add_id);
       int id = add_id.toInt();
       getFingerprintEnroll(id);
