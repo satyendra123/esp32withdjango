@@ -1,0 +1,68 @@
+# real time communication with react and the esp32 to control the led from the web fronted
+import network
+import ujson
+import usocket as socket
+import websocket_helper as wsh
+from machine import Pin
+
+# Replace with your Wi-Fi credentials
+SSID = 'YOUR_SSID'
+PASSWORD = 'YOUR_PASSWORD'
+
+# Connect to Wi-Fi
+def connect_to_wifi():
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    wlan.connect(SSID, PASSWORD)
+    while not wlan.isconnected():
+        pass
+    print('Connected to Wi-Fi')
+    print('IP Address:', wlan.ifconfig()[0])
+
+# Initialize LED pin
+led_pin = Pin(2, Pin.OUT)
+led_state = 0
+
+# WebSocket server callback
+def websocket_callback(websocket, msg):
+    global led_state
+    if msg is not None:
+        try:
+            data = ujson.loads(msg)
+            action = data.get('action')
+            if action == 'toggle':
+                led_state = not led_state
+                led_pin.value(led_state)
+        except Exception as e:
+            print('Error processing message:', e)
+
+# Main program
+connect_to_wifi()
+websocket = wsh.WebSocketHelper()
+websocket.listen(8080, callback=websocket_callback)
+
+# react js code 
+import React from 'react';
+
+const App = () => {
+  const sendWebSocketMessage = (action) => {
+    const ws = new WebSocket('ws://<your-esp32-ip>:8080');
+    ws.onopen = () => {
+      console.log('Connected to WebSocket server');
+      ws.send(JSON.stringify({ action }));
+    };
+    ws.onclose = () => {
+      console.log('Disconnected from WebSocket server');
+    };
+  };
+
+  return (
+    <div>
+      <h1>Control LED</h1>
+      <button onClick={() => sendWebSocketMessage('toggle')}>LED On</button>
+      <button onClick={() => sendWebSocketMessage('toggle')}>LED Off</button>
+    </div>
+  );
+};
+
+export default App;
