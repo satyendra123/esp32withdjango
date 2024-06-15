@@ -67,7 +67,7 @@ void ChecktoDeleteID() {
   WiFiClient client;
   HTTPClient http;
 
-  String postData = "Action=check"; // Add the action to the Post array in order to send it
+  String postData = "DeleteID=check"; // Add the action to the Post array in order to send it
 
   String url = String(serverUrl) + "check_delete_id/"; // Construct the full URL
   Serial.println("Requesting URL: " + url); // Debug print
@@ -83,7 +83,7 @@ void ChecktoDeleteID() {
     Serial.println("Payload: " + payload);
 
     if (payload.startsWith("{\"response\": \"del-id")) {
-      String id = payload.substring(payload.indexOf("del-id") + 8);
+      String id = payload.substring(payload.indexOf("del-id") + 6);
       Serial.println("Delete ID: " + id);
       deleteFingerprint(id.toInt());
     }
@@ -98,7 +98,7 @@ void ChecktoUpdateID() {
   WiFiClient client;
   HTTPClient http;
 
-  String postData = "Action=check"; // Add the action to the Post array in order to send it
+  String postData = "UpdateID=check"; // Add the action to the Post array in order to send it
 
   String url = String(serverUrl) + "check_update_id/"; // Construct the full URL
   Serial.println("Requesting URL: " + url); // Debug print
@@ -114,7 +114,7 @@ void ChecktoUpdateID() {
     Serial.println("Payload: " + payload);
 
     if (payload.startsWith("{\"response\": \"update-id")) {
-      String id = payload.substring(payload.indexOf("update-id") + 11);
+      String id = payload.substring(payload.indexOf("update-id") + 10);
       Serial.println("Update ID: " + id);
       updateFingerprint(id.toInt());
     }
@@ -144,6 +144,7 @@ void getFingerprintEnroll(int id) {
   // Dummy implementation, replace with your actual code
   Serial.printf("Enrolling Fingerprint ID %d.\n", id);
 }
+
 
 
 
