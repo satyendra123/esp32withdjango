@@ -1,0 +1,107 @@
+# ye humara esp32 ko ek web server banate hai means isme hum html aur css ka code run krta hai. jab ye humare wifi se connect hota hai to ek ip deta hai aur agar hum us ip ko open krte hai to hume data milta hai
+from machine import ADC
+import network
+import socket
+import time
+
+# WiFi credentials
+ssid = 'YOUR_SSID'
+password = 'YOUR_PASSWORD'
+
+wlan = network.WLAN(network.STA_IF)
+
+adc = ADC(4)  # ADC pin on Pico W for internal temperature sensor
+
+# Function to connect to Wi-Fi network
+#function to connect to Wi-Fi network
+def cnctWifi():
+    wlan.active(True)
+    print('Attempting to connect to the network...')
+    wlan.connect(ssid, password)        
+    max_wait = 10
+    while max_wait > 0:
+        if wlan.isconnected():
+            break
+        max_wait -= 1
+        print('waiting for connection...')
+        time.sleep(1)
+    
+    # Manage connection errors
+    if not wlan.isconnected():
+        print('Network Connection has failed')
+    else:
+        print('Connected to the network successfully.')
+        status = wlan.ifconfig()
+        print( 'Enter this address in browser = ' + status[0] )
+
+# HTML + CSS for webpage
+html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MicroPython Web Server</title>
+  <style>
+    html {
+      font-family: Arial;
+      display: inline-block;
+      margin: 0px auto;
+      text-align: center;
+    }
+    
+    h1 {
+      font-family: Arial;
+      color: #2551cc;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>MicroPython Web Server</h1>
+  <p>Temperature:</p>
+  <p> %s &#8451; </p>
+  <p> %s &#8457; </p>
+  
+</body>
+</html>
+"""
+
+# Connect to Wi-Fi
+cnctWifi()
+
+# Set up socket for web server
+addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
+s = socket.socket()
+s.settimeout(0.5)
+s.bind(addr)
+s.listen(1)
+
+print('Listening on', addr)
+
+# Main loop for handling client requests
+while True:
+    if not wlan.isconnected():
+        print("Connection failed. Trying to reconnect")
+        wlan.disconnect()
+        cnctWifi()
+    try:
+        cl, addr = s.accept()
+        print('Client connected from', addr)
+        request = cl.recv(1024)
+        print(request)
+
+        ADC_voltage = adc.read_u16() * (3.3 / (65535))  # Convert ADC reading to voltage
+        temp_celcius = 27 - (ADC_voltage - 0.706)/0.001721  # Convert voltage to temperature
+        temp_celcius= round(temp_celcius, 2)
+        temp_celcius=temp_celcius-15
+        temp_fahrenheit=32+(1.8*temp_celcius)
+        
+        response = html % (temp_celcius, temp_fahrenheit)
+        cl.send('HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n')
+        cl.send(response)
+        cl.close()
+
+    except:
+        pass
+    time.sleep(0.1)
+Code language: Python (python)
