@@ -122,3 +122,45 @@ def get_humidity(request):
 connect_to_wifi()
 app.run(host='0.0.0.0', port=80)
 
+#Note- so agar hum aisa kar sakte hai to means apne esp32 ko hi server bana sakte hai to hum directly without any third party server jaise flask or django python ka use kiye kar sakte hai. means hum directly react js se hit marenge aur hume esp32 data send kar dega react js me. kuch is tarah se
+import React, { useState } from 'react';
+import axios from 'axios';
+
+const App = () => {
+  const [temperature, setTemperature] = useState(null);
+  const [humidity, setHumidity] = useState(null);
+
+  const fetchTemperature = async () => {
+    try {
+      const response = await axios.post('http://<your-esp32-ip>/temperature');
+      setTemperature(response.data.value);
+    } catch (error) {
+      console.error('Error fetching temperature data:', error);
+    }
+  };
+
+  const fetchHumidity = async () => {
+    try {
+      const response = await axios.post('http://<your-esp32-ip>/humidity');
+      setHumidity(response.data.value);
+    } catch (error) {
+      console.error('Error fetching humidity data:', error);
+    }
+  };
+
+  return (
+    <div>
+      <h1>ESP32 DHT Sensor Data</h1>
+      <div>
+        <button onClick={fetchTemperature}>Get Temperature</button>
+        {temperature !== null && <p>Temperature: {temperature} °C</p>}
+      </div>
+      <div>
+        <button onClick={fetchHumidity}>Get Humidity</button>
+        {humidity !== null && <p>Humidity: {humidity} %</p>}
+      </div>
+    </div>
+  );
+};
+
+export default App;
