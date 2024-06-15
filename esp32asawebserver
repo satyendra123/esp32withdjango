@@ -1,0 +1,78 @@
+# we can also use the esp32 as a web server means suppose that if i hit the api from postman i will get the response from the esp32. like if i hit the api 192.168.1.50:8000/temperature/ then it gives me the temperature value and when i hit the api 192.168.1.50:8000/humidity/ then it gives me the humidity data
+#include <Arduino.h>
+#include <WiFi.h>
+#include <WebServer.h>
+#include <ArduinoJson.h>
+#include <DHT.h>
+
+const char *SSID = "YOUR_SSID";
+const char *PWD = "YOUR_PASSWORD";
+
+// Replace with your DHT sensor type and pin
+#define DHTPIN 4  // GPIO pin where the DHT sensor is connected
+#define DHTTYPE DHT11  // DHT 11 or DHT22
+
+DHT dht(DHTPIN, DHTTYPE);
+
+WebServer server(80);
+
+StaticJsonDocument<250> jsonDocument;
+char buffer[250];
+
+void setup_routing() {
+  server.on("/temperature", HTTP_POST, getTemperature);
+  server.on("/humidity", HTTP_POST, getHumidity);
+
+  server.begin();
+}
+
+void create_json(const char *tag, float value, const char *unit) {
+  jsonDocument.clear();
+  jsonDocument["type"] = tag;
+  jsonDocument["value"] = value;
+  jsonDocument["unit"] = unit;
+  serializeJson(jsonDocument, buffer);
+}
+
+void getTemperature() {
+  Serial.println("Get temperature");
+  float temperature = dht.readTemperature();
+  if (isnan(temperature)) {
+    server.send(500, "application/json", "{\"error\":\"Failed to read temperature\"}");
+    return;
+  }
+  create_json("temperature", temperature, "°C");
+  server.send(200, "application/json", buffer);
+}
+
+void getHumidity() {
+  Serial.println("Get humidity");
+  float humidity = dht.readHumidity();
+  if (isnan(humidity)) {
+    server.send(500, "application/json", "{\"error\":\"Failed to read humidity\"}");
+    return;
+  }
+  create_json("humidity", humidity, "%");
+  server.send(200, "application/json", buffer);
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  Serial.print("Connecting to Wi-Fi");
+  WiFi.begin(SSID, PWD);
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    delay(500);
+  }
+
+  Serial.print("Connected! IP Address: ");
+  Serial.println(WiFi.localIP());
+
+  dht.begin();
+  setup_routing();
+}
+
+void loop() {
+  server.handleClient();
+}
