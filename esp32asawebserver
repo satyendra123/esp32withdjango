@@ -76,3 +76,49 @@ void setup() {
 void loop() {
   server.handleClient();
 }
+
+// ESP32 ko hum server bhi bana sakte hai. aur ye humara micropython hai so hum isme hum flask ki jagah hume microdot ka use karna padhta hai. microdot ka use hum server banane ke liye kar sakte hai
+import network
+from machine import Pin
+import dht
+import ujson
+from microdot import Microdot
+
+# Replace with your Wi-Fi credentials
+SSID = 'YOUR_SSID'
+PASSWORD = 'YOUR_PASSWORD'
+
+# Connect to Wi-Fi
+def connect_to_wifi():
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    wlan.connect(SSID, PASSWORD)
+    while not wlan.isconnected():
+        pass
+    print('Connected to Wi-Fi')
+    print('IP Address:', wlan.ifconfig()[0])
+
+# Initialize DHT sensor
+dht_pin = Pin(4)
+dht_sensor = dht.DHT11(dht_pin)
+
+app = Microdot()
+
+@app.route('/temperature', methods=['POST'])
+def get_temperature(request):
+    dht_sensor.measure()
+    temperature = dht_sensor.temperature()
+    response = {'type': 'temperature', 'value': temperature, 'unit': '°C'}
+    return ujson.dumps(response), 200, {'Content-Type': 'application/json'}
+
+@app.route('/humidity', methods=['POST'])
+def get_humidity(request):
+    dht_sensor.measure()
+    humidity = dht_sensor.humidity()
+    response = {'type': 'humidity', 'value': humidity, 'unit': '%'}
+    return ujson.dumps(response), 200, {'Content-Type': 'application/json'}
+
+# Main program
+connect_to_wifi()
+app.run(host='0.0.0.0', port=80)
+
